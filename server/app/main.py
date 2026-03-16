@@ -1,6 +1,10 @@
+import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.database import init_db
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -38,6 +42,16 @@ app.include_router(ssl_api.router)
 app.include_router(benchmark.router)
 
 
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
 @app.get("/")
 async def root():
+    index = STATIC_DIR / "index.html"
+    if index.exists():
+        return FileResponse(index)
     return {"message": "Uptime Monitor API Server (FastAPI)"}
+
+
+if STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
