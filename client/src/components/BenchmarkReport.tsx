@@ -4,7 +4,6 @@ import { useServer } from "../context/ServerContext";
 import type {
   BenchmarkReportData,
   BenchmarkPhaseReport,
-  BenchmarkPhaseSummary,
 } from "../types";
 
 function formatNum(n: number): string {
