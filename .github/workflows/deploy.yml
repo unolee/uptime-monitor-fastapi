@@ -37,7 +37,7 @@ jobs:
       - name: Deploy to preview
         run: |
           rsync -avz --delete \
-            --exclude '.git' --exclude '.github' --exclude '__pycache__' --exclude '.venv' \
+            --exclude '.git' --exclude '.github' --exclude '__pycache__' --exclude '.venv' --exclude 'data' --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' \
             -e "ssh -i ~/.ssh/deploy_key" \
             server/ ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.DEPLOY_PATH }}/
       - name: Install dependencies and restart
