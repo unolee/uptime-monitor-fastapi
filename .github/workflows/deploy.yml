@@ -1,0 +1,48 @@
+name: Deploy
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Specific commit SHA to deploy (leave empty for latest)'
+        required: false
+        default: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit_sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Deploy to preview
+        run: |
+          rsync -avz --delete \
+            --exclude '.git' --exclude '.github' --exclude '__pycache__' --exclude '.venv' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            ./ ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.DEPLOY_PATH }}/
+      - name: Setup and restart
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "\
+            cd ${{ secrets.DEPLOY_PATH }} && \
+            python3 -m venv .venv && \
+            .venv/bin/pip install -r requirements.txt && \
+            pm2 restart ${{ secrets.SITE_ID }}-preview 2>/dev/null || \
+            pm2 start .venv/bin/gunicorn --name ${{ secrets.SITE_ID }}-preview -- -b 0.0.0.0:${{ secrets.PREVIEW_PORT }} app:app"
+      - name: Notify Site Manager
+        if: always()
+        run: |
+          curl -s -X POST "${{ secrets.WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac '${{ secrets.WEBHOOK_SECRET }}' | cut -d' ' -f2)" \
+            -d '{"action":"completed","workflow_run":{"conclusion":"'${{ job.status }}'","head_sha":"${{ github.sha }}","head_commit":{"message":"deploy"}},"repository":{"full_name":"${{ github.repository }}"},"site_id":"${{ secrets.SITE_ID }}"}'
