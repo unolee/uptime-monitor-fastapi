@@ -44,7 +44,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "\
             cd ${{ secrets.DEPLOY_PATH }} && \
             pm2 delete ${{ secrets.SITE_ID }}-preview 2>/dev/null; \
-            pm2 start .venv/bin/uvicorn --name ${{ secrets.SITE_ID }}-preview -- app.main:app --host 0.0.0.0 --port ${{ secrets.PREVIEW_PORT }} && \
+            pm2 start .venv/bin/uvicorn --name ${{ secrets.SITE_ID }}-preview --interpreter .venv/bin/python3 -- app.main:app --host 0.0.0.0 --port ${{ secrets.PREVIEW_PORT }} && \
             sleep 2 && \
             pm2 logs ${{ secrets.SITE_ID }}-preview --lines 20 --nostream"
       - name: Notify Site Manager
