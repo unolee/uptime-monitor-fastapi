@@ -30,7 +30,7 @@ jobs:
           rsync -avz --delete \
             --exclude '.git' --exclude '.github' --exclude '__pycache__' --exclude '.venv' \
             -e "ssh -i ~/.ssh/deploy_key" \
-            ./ ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.DEPLOY_PATH }}/
+            server/ ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.DEPLOY_PATH }}/
       - name: Setup and restart
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "\
@@ -38,7 +38,7 @@ jobs:
             python3 -m venv .venv && \
             .venv/bin/pip install -r requirements.txt && \
             pm2 restart ${{ secrets.SITE_ID }}-preview 2>/dev/null || \
-            pm2 start .venv/bin/gunicorn --name ${{ secrets.SITE_ID }}-preview -- -b 0.0.0.0:${{ secrets.PREVIEW_PORT }} app:app"
+            pm2 start .venv/bin/uvicorn --name ${{ secrets.SITE_ID }}-preview -- app.main:app --host 0.0.0.0 --port ${{ secrets.PREVIEW_PORT }}"
       - name: Notify Site Manager
         if: always()
         run: |
